@@ -3,7 +3,7 @@
 
 import numpy as np
 import tensorflow as tf
-import argparse
+import argparse   #argparse是Python用于解析命令行参数和选项的标准模块
 import os
 
 
@@ -25,17 +25,17 @@ BATCH_SIZE = 64
 class Model(ModelDesc):
     def __init__(self, depth):
         super(Model, self).__init__()
-        self.N = int((depth - 4)  / 3)
+        self.N = int((depth - 4)  / 3)#在每个密集的块中的层
         self.growthRate =12
 
-    def _get_inputs(self):
+    def _get_inputs(self):#输入图片和标签
         return [InputDesc(tf.float32, [None, 32, 32, 3], 'input'),
                 InputDesc(tf.int32, [None], 'label')
                ]
 
     def _build_graph(self, input_vars):
         image, label = input_vars
-        image = image / 128.0 - 1
+        image = image / 128.0 - 1#???
 
         def conv(name, l, channel, stride):
             return Conv2D(name, l, channel, 3, stride=stride,
@@ -43,15 +43,15 @@ class Model(ModelDesc):
                           W_init=tf.random_normal_initializer(stddev=np.sqrt(2.0/9/channel)))
         def add_layer(name, l):
             shape = l.get_shape().as_list()
-            in_channel = shape[3]
+            in_channel = shape[3]#shape[3]什么意思
             with tf.variable_scope(name) as scope:
                 c = BatchNorm('bn1', l)
                 c = tf.nn.relu(c)
                 c = conv('conv1', c, self.growthRate, 1)
-                l = tf.concat([c, l], 3)
+                l = tf.concat([c, l], 3)#？//？？
             return l
 
-        def add_transition(name, l):
+        def add_transition(name, l):#tansition
             shape = l.get_shape().as_list()
             in_channel = shape[3]
             with tf.variable_scope(name) as scope:
@@ -63,16 +63,16 @@ class Model(ModelDesc):
 
 
         def dense_net(name):
-            l = conv('conv0', image, 16, 1)
+            l = conv('conv0', image, 16, 1)  #densenet中block1：用conv0的输出32×32，16个通道，stride为1
             with tf.variable_scope('block1') as scope:
 
-                for i in range(self.N):
-                    l = add_layer('dense_layer.{}'.format(i), l)
+                for i in range(self.N):#N为12层（（depth-4）/3）
+                    l = add_layer('dense_layer.{}'.format(i), l)#l代表输入或输出
                 l = add_transition('transition1', l)
 
             with tf.variable_scope('block2') as scope:
 
-                for i in range(self.N):
+                for i in range(self.N):#N为12层（（depth-4）/3）
                     l = add_layer('dense_layer.{}'.format(i), l)
                 l = add_transition('transition2', l)
 
@@ -80,6 +80,7 @@ class Model(ModelDesc):
 
                 for i in range(self.N):
                     l = add_layer('dense_layer.{}'.format(i), l)
+            #以下是最后一个block后经历BN，Relu,avgpooling三部
             l = BatchNorm('bnlast', l)
             l = tf.nn.relu(l)
             l = GlobalAvgPooling('gap', l)
